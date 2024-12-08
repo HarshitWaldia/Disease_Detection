@@ -79,6 +79,3 @@ The dataset used for training the model includes various symptoms and their corr
 
 * **Harshit Waldia** - Developer
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
