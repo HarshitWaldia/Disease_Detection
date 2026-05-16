@@ -2,46 +2,35 @@ import tkinter as tk
 from tkinter import ttk
 import base64
 import threading
-import time
-import os
-from datetime import datetime
 
 # ======================================================
 #  PART 1 — CORE APP + SIDEBAR + NAVIGATION + GLASS UI
 # ======================================================
 
 # ------------------ GLOBAL COLORS ---------------------
-MODERN_THEME = {
-    "light": {
-        "bg": "#F8FAFC",
-        "sidebar": "#FFFFFF",
-        "glass": "#FFFFFF",
-        "text": "#0F172A",
-        "subtext": "#64748B",
-        "accent": "#6366F1",
-        "accent_hover": "#4F46E5",
-        "accent_light": "#EEF2FF",
-        "border": "#E2E8F0",
-        "shadow": "#00000010"
-    },
-    "dark": {
-        "bg": "#020617",
-        "sidebar": "#0F172A",
-        "glass": "#1E293B",
-        "text": "#F8FAFC",
-        "subtext": "#94A3B8",
-        "accent": "#818CF8",
-        "accent_hover": "#A5B4FC",
-        "accent_light": "#312E81",
-        "border": "#334155",
-        "shadow": "#00000040"
-    }
+LIGHT_THEME = {
+    "bg": "#F2F3F7",
+    "sidebar": "#FFFFFF",
+    "glass": "#FFFFFFAA",
+    "text": "#1F2937",
+    "subtext": "#6B7280",
+    "accent": "#6366F1",
+    "accent_hover": "#4F46E5",
+    "border": "#E5E7EB"
 }
 
-CURRENT_THEME = MODERN_THEME["light"]
+DARK_THEME = {
+    "bg": "#0F1115",
+    "sidebar": "#1A1C22",
+    "glass": "#1F2129CC",
+    "text": "#F3F4F6",
+    "subtext": "#9CA3AF",
+    "accent": "#818CF8",
+    "accent_hover": "#A5B4FC",
+    "border": "#2D2F36"
+}
 
-
-THEME = CURRENT_THEME
+THEME = LIGHT_THEME  # starts with light mode
 
 
 # -------------- BASE64 ICONS (PLACEHOLDERS) -----------
@@ -66,24 +55,21 @@ def load_icon(b64):
 #  GLASS FRAME (Fake glass using translucent white layer)
 # ======================================================
 class GlassFrame(tk.Frame):
-    def __init__(self, parent, padding=25, radius=20, **kwargs):
+    def __init__(self, parent, padding=20, radius=20, **kwargs):
         super().__init__(parent, **kwargs)
-        
-        self.configure(
-            bg=THEME["glass"],
-            highlightthickness=1,
-            highlightbackground=THEME["border"],
-            padx=2,
-            pady=2
-        )
 
-        # Inner container with padding
-        self.inner = tk.Frame(self, bg=THEME["glass"])
+        # Fake glass: just soft white
+        glass_color = "#FFFFFF"
+
+        self.radius = radius
+        self.padding = padding
+
+        self["bg"] = glass_color
+        self["highlightthickness"] = 1
+        self["highlightbackground"] = THEME["border"]
+
+        self.inner = tk.Frame(self, bg=glass_color)
         self.inner.pack(expand=True, fill="both", padx=padding, pady=padding)
-
-        # Subtle shadow effect using a border
-        self.shadow = tk.Frame(self, bg=THEME["border"], height=1)
-        self.shadow.pack(side="bottom", fill="x")
 
 
 
@@ -94,67 +80,46 @@ class SidebarButton(tk.Frame):
     def __init__(self, parent, text, icon, command, **kwargs):
         super().__init__(parent, **kwargs)
         self.command = command
-        self.active = False
 
         self["bg"] = THEME["sidebar"]
 
-        self.btn = tk.Frame(self, bg=THEME["sidebar"], cursor="hand2")
-        self.btn.pack(fill="x", pady=2, padx=10)
+        self.btn = tk.Frame(self, bg=THEME["sidebar"])
+        self.btn.pack(fill="x", pady=3)
 
-        # Indicator bar
-        self.indicator = tk.Frame(self.btn, bg=THEME["sidebar"], width=4)
-        self.indicator.pack(side="left", fill="y", pady=8)
-
-        # -------- ICON LABEL --------
+        # -------- ICON LABEL (always created) --------
         icon_img = load_icon(icon)
         if icon_img:
             self.icon_label = tk.Label(self.btn, image=icon_img, bg=THEME["sidebar"])
             self.icon_label.image = icon_img
         else:
-            self.icon_label = tk.Label(self.btn, text="•", font=("Segoe UI", 14),
-                                      bg=THEME["sidebar"], fg=THEME["subtext"])
+            # fallback so icon_label ALWAYS exists
+            self.icon_label = tk.Label(self.btn, text="•", font=("Segoe UI", 12),
+                                      bg=THEME["sidebar"], fg=THEME["text"])
 
-        self.icon_label.pack(side="left", padx=(12, 8))
+        self.icon_label.pack(side="left", padx=12)
 
         # -------- TEXT LABEL --------
         self.text_label = tk.Label(
-            self.btn, text=text, font=("Segoe UI", 11),
+            self.btn, text=text, font=("Segoe UI", 12),
             bg=THEME["sidebar"], fg=THEME["text"]
         )
-        self.text_label.pack(side="left", padx=5, pady=12)
+        self.text_label.pack(side="left", padx=10)
 
         # -------- HOVER EVENTS --------
         for widget in (self.btn, self.icon_label, self.text_label):
             widget.bind("<Enter>", lambda e: self.highlight())
             widget.bind("<Leave>", lambda e: self.unhighlight())
-            widget.bind("<Button-1>", lambda e: self.on_click())
+            widget.bind("<Button-1>", lambda e: self.command())
 
     def highlight(self):
-        if not self.active:
-            self.btn.config(bg=THEME["accent_light"])
-            self.text_label.config(bg=THEME["accent_light"], fg=THEME["accent"])
-            self.icon_label.config(bg=THEME["accent_light"], fg=THEME["accent"])
-            self.indicator.config(bg=THEME["accent_light"])
+        self.btn.config(bg=THEME["accent"])
+        self.text_label.config(bg=THEME["accent"], fg="#FFFFFF")
+        self.icon_label.config(bg=THEME["accent"])
 
     def unhighlight(self):
-        if not self.active:
-            self.btn.config(bg=THEME["sidebar"])
-            self.text_label.config(bg=THEME["sidebar"], fg=THEME["text"])
-            self.icon_label.config(bg=THEME["sidebar"], fg=THEME["subtext"])
-            self.indicator.config(bg=THEME["sidebar"])
-
-    def set_active(self, active=True):
-        self.active = active
-        if active:
-            self.btn.config(bg=THEME["accent_light"])
-            self.text_label.config(bg=THEME["accent_light"], fg=THEME["accent"], font=("Segoe UI", 11, "bold"))
-            self.icon_label.config(bg=THEME["accent_light"], fg=THEME["accent"])
-            self.indicator.config(bg=THEME["accent"])
-        else:
-            self.unhighlight()
-
-    def on_click(self):
-        self.command()
+        self.btn.config(bg=THEME["sidebar"])
+        self.text_label.config(bg=THEME["sidebar"], fg=THEME["text"])
+        self.icon_label.config(bg=THEME["sidebar"])
 
 
 
@@ -176,54 +141,30 @@ class AIDoctorApp:
 
     # ---------------- Build Main Layout ----------------
     def build_layout(self):
-        # Sidebar container
-        self.sidebar = tk.Frame(self.root, bg=THEME["sidebar"], width=260)
+        self.sidebar = tk.Frame(self.root, bg=THEME["sidebar"], width=240)
         self.sidebar.pack(side="left", fill="y")
-        self.sidebar.pack_propagate(False)
 
-        # Sidebar Header (App Name/Logo)
-        header_sidebar = tk.Frame(self.sidebar, bg=THEME["sidebar"], pady=30)
-        header_sidebar.pack(fill="x")
-        tk.Label(
-            header_sidebar, text="AI DOCTOR",
-            font=("Segoe UI", 18, "bold"),
-            bg=THEME["sidebar"], fg=THEME["accent"]
-        ).pack()
-
-        # Content area
         self.content = tk.Frame(self.root, bg=THEME["bg"])
         self.content.pack(side="right", fill="both", expand=True)
 
-        # Top Header Bar
-        self.header_bar = tk.Frame(self.content, bg=THEME["bg"], height=80)
-        self.header_bar.pack(fill="x", padx=40, pady=(20, 0))
-        self.header_bar.pack_propagate(False)
-
-        self.page_title = tk.Label(
-            self.header_bar, text="Home",
-            font=("Segoe UI", 24, "bold"),
-            bg=THEME["bg"], fg=THEME["text"]
-        )
-        self.page_title.pack(side="left")
-
-        # ---- Floating AI Button (Restyled) ----
+        # ---- Floating AI Button ----
         self.ai_button = tk.Button(
-            self.header_bar,
-            text="✨ AI Assistant",
-            font=("Segoe UI", 10, "bold"),
+            self.content,
+            text="🧠  AI Assistant",
+            font=("Segoe UI", 12, "bold"),
             bg=THEME["accent"],
             fg="white",
             activebackground=THEME["accent_hover"],
-            activeforeground="white",
             relief="flat",
             cursor="hand2",
-            padx=15,
-            pady=8,
+            width=15,
+            height=2,
+            padx=10,
+            pady=10,
             command=self.open_ai_assistant
         )
-        self.ai_button.pack(side="right")
+        self.ai_button.place(relx=0.97, rely=0.06, anchor="ne")
 
-        self.sidebar_buttons = []
         self.add_sidebar_buttons()
         self.show_home()
 
@@ -234,69 +175,45 @@ class AIDoctorApp:
     def open_ai_assistant(self):
         win = tk.Toplevel(self.root)
         win.title("AI Health Assistant")
-        win.geometry("450x650")
+        win.geometry("500x600")
         win.configure(bg=THEME["bg"])
-        win.transient(self.root)  # Keep on top of parent
-
-        # Header
-        head = tk.Frame(win, bg=THEME["accent"], pady=15)
-        head.pack(fill="x")
-        tk.Label(
-            head, text="✨ Health Assistant",
-            font=("Segoe UI", 14, "bold"),
-            bg=THEME["accent"], fg="white"
-        ).pack()
 
         # ----- Chat Display -----
         display_frame = tk.Frame(win, bg=THEME["bg"])
-        display_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        display_frame.pack(fill="both", expand=True)
 
         canvas = tk.Canvas(display_frame, bg=THEME["bg"], highlightthickness=0)
         scrollbar = ttk.Scrollbar(display_frame, orient="vertical", command=canvas.yview)
-        
-        # Chat container inside canvas
         self.chat_frame = tk.Frame(canvas, bg=THEME["bg"])
+
         self.chat_frame.bind(
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=self.chat_frame, anchor="nw", width=400) # Fixed width for wrapping
+        canvas.create_window((0, 0), window=self.chat_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
         # ----- User Input -----
-        input_container = tk.Frame(win, bg=THEME["sidebar"], pady=15, padx=15)
-        input_container.pack(fill="x")
-        
-        input_frame = tk.Frame(input_container, bg=THEME["bg"], highlightthickness=1, highlightbackground=THEME["border"])
+        input_frame = tk.Frame(win, bg=THEME["bg"])
         input_frame.pack(fill="x")
 
-        self.ai_entry = tk.Entry(
-            input_frame, font=("Segoe UI", 11),
-            bg=THEME["bg"], fg=THEME["text"],
-            relief="flat", insertbackground=THEME["text"]
-        )
-        self.ai_entry.pack(side="left", fill="x", expand=True, padx=12, pady=10)
-        self.ai_entry.bind("<Return>", lambda e: self.process_ai_message())
+        self.ai_entry = tk.Entry(input_frame, font=("Segoe UI", 12))
+        self.ai_entry.pack(side="left", fill="x", expand=True, padx=10, pady=10)
 
         send_btn = tk.Button(
             input_frame,
             text="Send",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 11, "bold"),
             bg=THEME["accent"],
             fg="white",
             relief="flat",
-            activebackground=THEME["accent_hover"],
-            activeforeground="white",
-            padx=15,
             command=self.process_ai_message
         )
-        send_btn.pack(side="right", padx=5, pady=5)
-        
-        self.add_chat_bubble("Hello! I'm your AI health assistant. How can I help you today?", "ai")
+        send_btn.pack(side="right", padx=10, pady=10)
 
     # ======================================================
     #  PROCESS AI MESSAGE
@@ -317,196 +234,178 @@ class AIDoctorApp:
     #  CHAT BUBBLE DISPLAY
     # ======================================================
     def add_chat_bubble(self, text, sender="user"):
-        bubble_bg = THEME["accent"] if sender == "ai" else THEME["accent_light"]
-        text_fg = "white" if sender == "ai" else THEME["text"]
-        align = "e" if sender == "user" else "w"
-        
-        wrapper = tk.Frame(self.chat_frame, bg=THEME["bg"])
-        wrapper.pack(fill="x", pady=5)
-
         bubble = tk.Frame(
-            wrapper,
-            bg=bubble_bg,
-            padx=12,
-            pady=8
+            self.chat_frame,
+            bg=THEME["accent"] if sender == "ai" else "#E5E7EB",
+            padx=10,
+            pady=6
         )
-        bubble.pack(anchor=align, padx=10)
+        bubble.pack(anchor="e" if sender == "ai" else "w", pady=4, padx=10)
 
         lbl = tk.Label(
             bubble,
             text=text,
             font=("Segoe UI", 11),
-            bg=bubble_bg,
-            fg=text_fg,
-            wraplength=300,
-            justify="left"
+            bg=bubble["bg"],
+            fg="white" if sender == "ai" else "#111"
         )
         lbl.pack()
-        
-        # Auto-scroll to bottom
-        self.chat_frame.update_idletasks()
 
 
     # ======================================================
     #  OFFLINE AI RESPONSE GENERATION (NLP + Knowledge Base)
     # ======================================================
     def generate_ai_response(self, msg):
-        msg = msg.lower().strip()
-        
-        # Greetings
-        if any(word in msg for word in ["hello", "hi", "hey", "greetings"]):
-            return "Hello! I'm your AI health assistant. I can help you understand symptoms, provide information about diseases, and offer general health advice. How can I assist you today?"
+        msg = msg.lower()
 
-        # Symptom-based help
-        if "symptom" in msg or "feel" in msg or "pain" in msg:
-            return "I can help identify potential causes for your symptoms. Please use the 'Diagnosis' tab for a comprehensive analysis using our machine learning model, or tell me more about what you're feeling."
+        # Simple NLP:
+        keywords = msg.split()
 
-        # Disease name detection (Enhanced)
-        matched_disease = None
+        # Disease name detection
         for disease in disease_info.keys():
-            # Check for exact or close match
-            d_lower = disease.lower().replace(" ", "")
-            m_lower = msg.replace(" ", "")
-            if d_lower in m_lower or m_lower in d_lower:
-                matched_disease = disease
-                break
-        
-        if matched_disease:
-            info = disease_info[matched_disease]
+            if disease.lower().replace(" ", "") in msg.replace(" ", ""):
+                info = disease_info[disease]
+                return (
+                    f"🩺 *{disease}*\n\n"
+                    f"• What it is: {info['explanation']}\n\n"
+                    f"• Causes: {info['causes']}\n\n"
+                    f"• Symptoms: {info['symptoms']}\n\n"
+                    f"• Prevention: {info['prevention']}\n\n"
+                    f"• Home Care: {info['homecare']}\n\n"
+                    f"• When to see doctor: {info['doctor']}"
+                )
+
+        # General health questions
+        if "fever" in msg:
             return (
-                f"🩺 **{matched_disease}**\n\n"
-                f"📝 **What it is:** {info['explanation']}\n\n"
-                f"❓ **Common Causes:** {info['causes']}\n\n"
-                f"⚠️ **Symptoms:** {info['symptoms']}\n\n"
-                f"🛡️ **Prevention:** {info['prevention']}\n\n"
-                f"🏠 **Home Care:** {info['homecare']}\n\n"
-                f"👨‍⚕️ **When to see a doctor:** {info['doctor']}"
+                "Fever can result from infections, dehydration, or inflammation.\n\n"
+                "Try:\n• Rest\n• Hydration\n• Lukewarm compress\n\n"
+                "Seek care if fever > 3 days or very high."
             )
 
-        # General advice categories
-        advice_map = {
-            "fever": "Fever is often a sign of infection. Stay hydrated, rest, and monitor your temperature. If it exceeds 103°F (39.4°C) or lasts more than 3 days, see a doctor.",
-            "headache": "Headaches can be caused by stress, dehydration, or eye strain. Try resting in a dark room and drinking water. Seek immediate care if it's sudden and severe.",
-            "stomach": "Stomach pain may be due to indigestion, infection, or more serious issues. Stick to a bland diet (BRAT: Bananas, Rice, Applesauce, Toast) and stay hydrated.",
-            "cough": "Coughs can be viral or bacterial. Honey and warm liquids can soothe a sore throat. If you have difficulty breathing, seek help immediately.",
-            "diet": "A balanced diet rich in fruits, vegetables, lean proteins, and whole grains is essential for long-term health.",
-            "exercise": "Aim for at least 150 minutes of moderate aerobic activity or 75 minutes of vigorous activity each week."
-        }
-
-        for key, advice in advice_map.items():
-            if key in msg:
-                return f"💡 **Advice on {key.capitalize()}:**\n\n{advice}"
+        if "headache" in msg or "migraine" in msg:
+            return (
+                "Headaches may be caused by stress, dehydration, or sleep issues.\n"
+                "If migraine: rest in a dark room and stay hydrated.\n"
+                "Seek help if headaches are severe or frequent."
+            )
 
         return (
-            "I'm not quite sure about that. I can provide detailed information on over 40 diseases, explain symptoms, or give general health tips.\n\n"
-            "Try asking about a specific condition like 'Tell me about Dengue' or 'What are the symptoms of Diabetes?'"
+            "I'm here to help! Try asking:\n"
+            "• What is dengue?\n"
+            "• Symptoms of diabetes?\n"
+            "• How to reduce fever?\n"
+            "• Causes of migraine?"
         )
 
-    # ---------------- Sidebar Buttons ----------------
     # ---------------- Sidebar Buttons ----------------
     def add_sidebar_buttons(self):
-        self.btn_home = SidebarButton(
-            self.sidebar, "Home", ICONS["home"],
+        SidebarButton(
+            self.sidebar, "🏠 Home", ICONS["home"],
             command=self.show_home
-        )
-        self.btn_home.pack(fill="x")
+        ).pack(fill="x")
 
-        self.btn_diag = SidebarButton(
-            self.sidebar, "Diagnosis", ICONS["diagnosis"],
+        SidebarButton(
+            self.sidebar, "🩺 Diagnosis", ICONS["diagnosis"],
             command=self.show_diagnosis
-        )
-        self.btn_diag.pack(fill="x")
+        ).pack(fill="x")
 
-        self.btn_hist = SidebarButton(
-            self.sidebar, "History", ICONS["history"],
+        SidebarButton(
+            self.sidebar,
+            "🤖 AI Assistant",
+            ICONS["settings"],   # or use another icon if you have one
+            command=self.open_ai_assistant
+        ).pack(fill="x")
+
+        SidebarButton(
+            self.sidebar, "📜 History", ICONS["history"],
             command=self.show_history
-        )
-        self.btn_hist.pack(fill="x")
+        ).pack(fill="x")
 
-        self.btn_sett = SidebarButton(
-            self.sidebar, "Settings", ICONS["settings"],
+        SidebarButton(
+            self.sidebar, "⚙️ Settings", ICONS["settings"],
             command=self.show_settings
-        )
-        self.btn_sett.pack(fill="x")
-        
-        self.sidebar_buttons = [self.btn_home, self.btn_diag, self.btn_hist, self.btn_sett]
+        ).pack(fill="x")
 
     # ==================================================
     #  PAGE SWITCHER
     # ==================================================
-    def switch_page(self, frame_builder, title, active_btn):
+    def switch_page(self, frame_builder):
         if self.active_page:
             self.active_page.destroy()
 
-        self.page_title.config(text=title)
-        
-        # Update sidebar active states
-        for btn in self.sidebar_buttons:
-            btn.set_active(False)
-        active_btn.set_active(True)
-
         self.active_page = frame_builder()
-        self.active_page.pack(fill="both", expand=True, padx=40, pady=(0, 40))
+        self.active_page.pack(fill="both", expand=True, padx=20, pady=20)
 
     # ----------------- Pages -----------------
 
     def show_home(self):
         def build():
             frame = GlassFrame(self.content)
-            
-            # Welcome Illustration / Icon Placeholder
-            tk.Label(
-                frame.inner,
-                text="👋",
-                font=("Segoe UI", 48),
-                bg=frame.inner["bg"]
-            ).pack(pady=(20, 10))
-
             tk.Label(
                 frame.inner,
                 text="Welcome to AI Doctor",
                 font=("Segoe UI", 28, "bold"),
                 bg=frame.inner["bg"],
                 fg=THEME["text"],
-            ).pack(pady=10)
+            ).pack(pady=20)
 
             tk.Label(
                 frame.inner,
-                text="Your intelligent health companion powered by machine learning.",
+                text="Use the sidebar to navigate.\nThis app uses machine learning to predict diseases based on symptoms.",
                 font=("Segoe UI", 14),
                 bg=frame.inner["bg"],
                 fg=THEME["subtext"],
             ).pack(pady=10)
-            
-            # Quick Stats or Info Cards
-            stats_frame = tk.Frame(frame.inner, bg=frame.inner["bg"])
-            stats_frame.pack(pady=30, fill="x")
-            
-            def create_card(parent, title, desc):
-                card = tk.Frame(parent, bg=THEME["accent_light"], padx=20, pady=20)
-                card.pack(side="left", expand=True, fill="both", padx=10)
-                tk.Label(card, text=title, font=("Segoe UI", 12, "bold"), bg=THEME["accent_light"], fg=THEME["accent"]).pack(anchor="w")
-                tk.Label(card, text=desc, font=("Segoe UI", 10), bg=THEME["accent_light"], fg=THEME["subtext"], justify="left", wraplength=150).pack(anchor="w", pady=(5, 0))
-
-            create_card(stats_frame, "Precision", "Our ensemble model uses 5+ algorithms for high accuracy.")
-            create_card(stats_frame, "Speed", "Get instant predictions based on your symptoms.")
-            create_card(stats_frame, "History", "Keep track of all your previous health checks.")
 
             return frame
 
-        self.switch_page(build, "Home", self.btn_home)
+        self.switch_page(build)
 
     def show_diagnosis(self):
-        # This will be overridden by the injected method later
-        pass
+        # Placeholder — actual UI in PART 2
+        def build():
+            frame = GlassFrame(self.content)
+            tk.Label(
+                frame.inner,
+                text="Diagnosis Page (loading...)",
+                font=("Segoe UI", 24),
+                bg=frame.inner["bg"],
+                fg=THEME["text"]
+            ).pack(pady=40)
+            return frame
+
+        self.switch_page(build)
 
     def show_history(self):
-        # This will be overridden by the injected method later
-        pass
+        # Placeholder — real table added in PART 3
+        def build():
+            frame = GlassFrame(self.content)
+            tk.Label(
+                frame.inner,
+                text="History Page (loading...)",
+                font=("Segoe UI", 24),
+                bg=frame.inner["bg"],
+                fg=THEME["text"]
+            ).pack(pady=40)
+            return frame
+
+        self.switch_page(build)
 
     def show_settings(self):
-        # This will be overridden by the injected method later
-        pass
+        # Placeholder — real settings added in PART 3
+        def build():
+            frame = GlassFrame(self.content)
+            tk.Label(
+                frame.inner,
+                text="Settings Page (loading...)",
+                font=("Segoe UI", 24),
+                bg=frame.inner["bg"],
+                fg=THEME["text"]
+            ).pack(pady=40)
+            return frame
+
+        self.switch_page(build)
 
 
 # ======================================================
@@ -924,9 +823,7 @@ mapping = {
     'Acne':37,'Urinary tract infection':38,'Psoriasis':39,'Impetigo':40
 }
 
-# Silence downcasting warning
-pd.set_option('future.no_silent_downcasting', True)
-df = df.replace({'prognosis': mapping})
+df.replace({'prognosis': mapping}, inplace=True)
 
 symptom_list = list(df.columns[:-1])
 disease_list = list(mapping.keys())
@@ -1043,140 +940,157 @@ def add_diagnosis_page_to_app():
         """Builds the full diagnosis UI inside a glass card."""
 
         def build():
-            frame = GlassFrame(self.content, padding=30)
+            frame = GlassFrame(self.content, padding=25)
 
-            # ------------------ Form Layout ------------------
-            form_frame = tk.Frame(frame.inner, bg=frame.inner["bg"])
-            form_frame.pack(fill="both", expand=True)
-
-            left_side = tk.Frame(form_frame, bg=frame.inner["bg"])
-            left_side.pack(side="left", fill="both", expand=True, padx=(0, 20))
-
-            right_side = tk.Frame(form_frame, bg=frame.inner["bg"])
-            right_side.pack(side="right", fill="both", expand=True)
-
-            # --- Left Side: Input ---
+            # ------------------ Title ------------------
             tk.Label(
-                left_side, text="Patient Information",
-                font=("Segoe UI", 14, "bold"),
-                bg=left_side["bg"], fg=THEME["text"]
-            ).pack(anchor="w", pady=(0, 15))
+                frame.inner,
+                text="Disease Prediction",
+                font=("Segoe UI", 22, "bold"),
+                fg=THEME["text"],
+                bg=frame.inner["bg"]
+            ).pack(anchor="w", pady=(0, 10))
 
+            # ------------------ Patient Name ------------------
             tk.Label(
-                left_side, text="Patient Name",
-                font=("Segoe UI", 10),
-                bg=left_side["bg"], fg=THEME["subtext"]
+                frame.inner, text="Patient Name:",
+                font=("Segoe UI", 12),
+                bg=frame.inner["bg"], fg=THEME["text"]
             ).pack(anchor="w")
 
-            name_entry = ttk.Entry(left_side, width=40)
-            name_entry.pack(anchor="w", pady=(5, 20))
+            name_entry = ttk.Entry(frame.inner, width=40)
+            name_entry.pack(anchor="w", pady=(0, 15))
 
+            # ------------------ Symptoms Dropdowns ------------------
             tk.Label(
-                left_side, text="Select Symptoms",
-                font=("Segoe UI", 10),
-                bg=left_side["bg"], fg=THEME["subtext"]
-            ).pack(anchor="w", pady=(0, 5))
+                frame.inner, text="Select up to 5 symptoms:",
+                font=("Segoe UI", 12),
+                bg=frame.inner["bg"], fg=THEME["text"]
+            ).pack(anchor="w", pady=(10, 5))
 
             choices = sorted(symptom_list)
             symptom_vars = []
 
             for i in range(5):
                 var = tk.StringVar()
-                box = ttk.Combobox(left_side, textvariable=var, values=choices, width=45)
-                box.set(f"Symptom {i+1}")
+                box = ttk.Combobox(frame.inner, textvariable=var, values=choices, width=50)
+                box.set("Select a symptom")
                 box.pack(anchor="w", pady=5)
                 symptom_vars.append(var)
 
-            # --- Right Side: Results ---
-            tk.Label(
-                right_side, text="Diagnosis Results",
-                font=("Segoe UI", 14, "bold"),
-                bg=right_side["bg"], fg=THEME["text"]
-            ).pack(anchor="w", pady=(0, 15))
-
-            result_box = tk.Frame(right_side, bg=THEME["accent_light"], padx=20, pady=20)
-            result_box.pack(fill="both", expand=True)
-
+            # ------------------ Result Label ------------------
             result_label = tk.Label(
-                result_box,
-                text="Enter details and click predict to see results.",
-                font=("Segoe UI", 11),
-                bg=THEME["accent_light"],
-                fg=THEME["subtext"],
-                wraplength=350,
-                justify="left"
+                frame.inner,
+                text="Result will appear here...",
+                font=("Segoe UI", 14),
+                bg=frame.inner["bg"],
+                fg=THEME["subtext"]
             )
-            result_label.pack(fill="both", expand=True)
+            result_label.pack(pady=20)
+
+            # ------------------ Loading Animation ------------------
+            loading_label = tk.Label(
+                frame.inner,
+                text="",
+                font=("Segoe UI", 12),
+                bg=frame.inner["bg"],
+                fg=THEME["accent"]
+            )
+            loading_label.pack()
+
+            def animate_loading():
+                dots = ["", ".", "..", "..."]
+                i = 0
+                while self.loading:
+                    loading_label.config(text="Predicting" + dots[i % 4])
+                    i += 1
+                    loading_label.update()
+                    time.sleep(0.3)
 
             # ------------------ Prediction Logic ------------------
             import time
 
             def predict():
                 name = name_entry.get().strip()
-                selected = [v.get() for v in symptom_vars if v.get() not in ["", "Symptom 1", "Symptom 2", "Symptom 3", "Symptom 4", "Symptom 5"]]
+                selected = [v.get() for v in symptom_vars if v.get() != "Select a symptom"]
 
                 if name == "":
-                    result_label.config(text="⚠ Please enter patient name.", fg="#EF4444")
+                    result_label.config(text="⚠ Please enter patient name.", fg="red")
                     return
 
                 if len(selected) == 0:
-                    result_label.config(text="⚠ Select at least one symptom.", fg="#EF4444")
+                    result_label.config(text="⚠ Select at least one symptom.", fg="red")
                     return
 
                 # Build input vector
                 vector = [1 if s in selected else 0 for s in symptom_list]
 
-                # Start loading
-                result_label.config(text="🔄 Analyzing symptoms... please wait.", fg=THEME["accent"])
-                
+                # Start loading animation
+                self.loading = True
+                thread_anim = threading.Thread(target=animate_loading)
+                thread_anim.start()
+
                 def run_prediction():
-                    time.sleep(1.5)  # Simulated processing delay
+                    time.sleep(1)  # Simulated processing delay
 
-                    try:
-                        vector_scaled = scaler.transform([vector])
-                        probs = best_model.predict_proba(vector_scaled)[0]
-                        top3 = probs.argsort()[-3:][::-1]
-                        main_disease = disease_list[top3[0]]
+                    # -------- BUILD INPUT VECTOR --------
+                    vector = [1 if s in selected else 0 for s in symptom_list]
 
-                        # Log to excel
-                        save_to_excel_log(name, selected + [""]*(5 - len(selected)), main_disease)
+                    # -------- SCALE INPUT --------
+                    vector_scaled = scaler.transform([vector])
 
-                        info = disease_info.get(main_disease, {})
-                        
-                        res_str = f"🎯 PROBABLE DIAGNOSIS: {main_disease.upper()}\n"
-                        res_str += f"Confidence: {probs[top3[0]]*100:.1f}%\n\n"
-                        res_str += f"Other possibilities:\n"
-                        res_str += f"• {disease_list[top3[1]]} ({probs[top3[1]]*100:.1f}%)\n"
-                        res_str += f"• {disease_list[top3[2]]} ({probs[top3[2]]*100:.1f}%)\n\n"
-                        res_str += f"💡 EXPLANATION:\n{info.get('explanation', 'N/A')}\n\n"
-                        res_str += f"🏥 ADVICE:\n{info.get('homecare', 'Consult a professional.')}"
+                    # -------- PREDICT PROBABILITIES --------
+                    probs = best_model.predict_proba(vector_scaled)[0]
 
-                        result_label.config(text=res_str, fg=THEME["text"], justify="left")
-                    except Exception as e:
-                        result_label.config(text=f"Error: {str(e)}", fg="#EF4444")
+                    # -------- TOP 3 DISEASES --------
+                    top3 = probs.argsort()[-3:][::-1]
+
+                    main_disease = disease_list[top3[0]]
+
+                    # -------- LOG TO EXCEL --------
+                    save_to_excel_log(name, selected + [""]*(5 - len(selected)), main_disease)
+
+                    # -------- EXPLANATION + SAFE ADVICE --------
+                    info = disease_info.get(main_disease, {})
+                    explanation = info.get("explanation", "No explanation available.")
+                    advice = info.get("advice", "No advice available.")
+
+                    result_text = (
+                        f"🔍 Top Predictions:\n"
+                        f"1. {disease_list[top3[0]]} ({probs[top3[0]]*100:.2f}%)\n"
+                        f"2. {disease_list[top3[1]]} ({probs[top3[1]]*100:.2f}%)\n"
+                        f"3. {disease_list[top3[2]]} ({probs[top3[2]]*100:.2f}%)\n\n"
+                        f"🧠 Explanation:\n{explanation}\n\n"
+                        f"💊 Recommendations:\n{advice}"
+                    )
+
+                    # -------- UPDATE UI --------
+                    self.loading = False
+                    loading_label.config(text="")
+                    result_label.config(text=result_text, fg=THEME["text"])
+
 
                 threading.Thread(target=run_prediction).start()
 
             # ------------------ Predict Button ------------------
             predict_btn = tk.Button(
-                left_side,
-                text="Run Diagnosis",
-                font=("Segoe UI", 12, "bold"),
+                frame.inner,
+                text="Predict Disease",
+                font=("Segoe UI", 13, "bold"),
                 bg=THEME["accent"],
                 fg="white",
                 activebackground=THEME["accent_hover"],
-                activeforeground="white",
                 cursor="hand2",
                 relief="flat",
-                padx=30,
-                pady=12,
+                padx=20,
+                pady=10,
                 command=predict
             )
-            predict_btn.pack(anchor="w", pady=20)
+            predict_btn.pack(pady=10)
 
             return frame
 
-        self.switch_page(build, "Diagnosis", self.btn_diag)
+        self.switch_page(build)
 
     # Inject this method into AIDoctorApp
     AIDoctorApp.show_diagnosis = diagnosis_page
@@ -1193,27 +1107,32 @@ add_diagnosis_page_to_app()
 def add_history_page_to_app():
 
     def history_page(self):
+
         def build():
-            frame = GlassFrame(self.content, padding=25)
+            frame = GlassFrame(self.content, padding=20)
+
+            title = tk.Label(
+                frame.inner,
+                text="Prediction History",
+                font=("Segoe UI", 20, "bold"),
+                bg=frame.inner["bg"],
+                fg=THEME["text"]
+            )
+            title.pack(anchor="w", pady=(0, 10))
 
             file = "prediction_log.xlsx"
             if not os.path.exists(file):
                 tk.Label(
                     frame.inner,
-                    text="No history found yet. Start by running a diagnosis!",
-                    font=("Segoe UI", 12),
+                    text="No history found.",
+                    font=("Segoe UI", 14),
                     bg=frame.inner["bg"],
                     fg=THEME["subtext"]
-                ).pack(pady=50)
+                ).pack(pady=20)
                 return frame
 
             # Load Excel
-            try:
-                df_log = pd.read_excel(file)
-                df_log = df_log.sort_index(ascending=False) # Recent first
-            except Exception as e:
-                tk.Label(frame.inner, text=f"Error loading history: {e}", bg=frame.inner["bg"], fg="red").pack()
-                return frame
+            df = pd.read_excel(file)
 
             # =============== SCROLLABLE TABLE ===============
             container = tk.Frame(frame.inner, bg=frame.inner["bg"])
@@ -1231,39 +1150,45 @@ def add_history_page_to_app():
 
             def update_scroll(event):
                 canvas.configure(scrollregion=canvas.bbox("all"))
+
             table_frame.bind("<Configure>", update_scroll)
 
             # ---------------- HEADER ----------------
-            cols_to_show = ["Timestamp", "Patient Name", "Result"]
-            for col, column_name in enumerate(cols_to_show):
+            for col, column_name in enumerate(df.columns):
                 tk.Label(
                     table_frame,
                     text=column_name,
                     font=("Segoe UI", 11, "bold"),
-                    bg=THEME["accent_light"],
-                    fg=THEME["accent"],
-                    padx=15,
-                    pady=10,
-                    width=20 if column_name != "Timestamp" else 25
-                ).grid(row=0, column=col, sticky="nsew", padx=1, pady=1)
+                    bg=frame.inner["bg"],
+                    fg=THEME["text"],
+                    borderwidth=1,
+                    relief="solid",
+                    padx=8,
+                    pady=4
+                ).grid(row=0, column=col, sticky="nsew")
 
             # ---------------- ROWS ----------------
-            for r, row_data in enumerate(df_log[cols_to_show].values, start=1):
+            for r, row_data in enumerate(df.values, start=1):
                 for c, cell in enumerate(row_data):
                     tk.Label(
                         table_frame,
                         text=str(cell),
                         font=("Segoe UI", 10),
                         bg=frame.inner["bg"],
-                        fg=THEME["text"],
-                        padx=15,
-                        pady=8,
-                        anchor="w"
-                    ).grid(row=r, column=c, sticky="nsew", padx=1, pady=1)
+                        fg=THEME["subtext"],
+                        borderwidth=1,
+                        relief="solid",
+                        padx=8,
+                        pady=4
+                    ).grid(row=r, column=c, sticky="nsew")
+
+            # Expand columns equally
+            for col in range(len(df.columns)):
+                table_frame.grid_columnconfigure(col, weight=1)
 
             return frame
 
-        self.switch_page(build, "Prediction History", self.btn_hist)
+        self.switch_page(build)
 
     AIDoctorApp.show_history = history_page
 
@@ -1276,68 +1201,51 @@ add_history_page_to_app()
 def add_settings_page_to_app():
 
     def settings_page(self):
-        def build():
-            frame = GlassFrame(self.content, padding=30)
 
-            # ------------------ Appearance ------------------
+        def build():
+            frame = GlassFrame(self.content, padding=25)
+
             tk.Label(
-                frame.inner, text="Appearance",
-                font=("Segoe UI", 14, "bold"),
-                bg=frame.inner["bg"], fg=THEME["text"]
+                frame.inner,
+                text="Settings",
+                font=("Segoe UI", 22, "bold"),
+                bg=frame.inner["bg"],
+                fg=THEME["text"]
             ).pack(anchor="w", pady=(0, 20))
 
+            # ------------------ Theme Toggle ------------------
             def toggle_theme():
-                global CURRENT_THEME, THEME
-                CURRENT_THEME = MODERN_THEME["dark"] if theme_var.get() == 1 else MODERN_THEME["light"]
-                THEME = CURRENT_THEME
+                global THEME
+                THEME = DARK_THEME if theme_var.get() == 1 else LIGHT_THEME
                 self.rebuild_ui()
 
-            theme_var = tk.IntVar(value=1 if CURRENT_THEME == MODERN_THEME["dark"] else 0)
+            theme_var = tk.IntVar(value=1 if THEME == DARK_THEME else 0)
 
-            # Modern-style toggle (simplified for Tkinter)
-            toggle_container = tk.Frame(frame.inner, bg=frame.inner["bg"])
-            toggle_container.pack(fill="x", pady=10)
-            
             tk.Checkbutton(
-                toggle_container,
-                text=" Enable Dark Mode",
-                font=("Segoe UI", 11),
+                frame.inner,
+                text=" Dark Mode",
+                font=("Segoe UI", 14),
                 variable=theme_var,
                 bg=frame.inner["bg"],
                 fg=THEME["text"],
                 activebackground=frame.inner["bg"],
-                activeforeground=THEME["text"],
                 command=toggle_theme,
-                selectcolor=frame.inner["bg"] if CURRENT_THEME == MODERN_THEME["light"] else THEME["sidebar"]
-            ).pack(side="left")
+                selectcolor=frame.inner["bg"]
+            ).pack(anchor="w", pady=5)
 
-            # ------------------ Info ------------------
-            tk.Frame(frame.inner, bg=THEME["border"], height=1).pack(fill="x", pady=40)
-            
+            # ------------------ About Section ------------------
             tk.Label(
-                frame.inner, text="About AI Doctor",
-                font=("Segoe UI", 14, "bold"),
-                bg=frame.inner["bg"], fg=THEME["text"]
-            ).pack(anchor="w", pady=(0, 10))
-
-            about_text = (
-                "Version: 2.0.0 (Modern Edition)\n"
-                "Engine: Ensemble ML (RF, XGB, SVM, LR, GB)\n"
-                "UI: Custom Glassmorphism System\n\n"
-                "This application is designed for educational purposes and provides preliminary disease "
-                "predictions based on reported symptoms. Always consult a medical professional."
-            )
-            
-            tk.Label(
-                frame.inner, text=about_text,
-                font=("Segoe UI", 10),
-                bg=frame.inner["bg"], fg=THEME["subtext"],
+                frame.inner,
+                text="\nAI Doctor v1.0\nModern Glass UI\nPowered by Machine Learning",
+                font=("Segoe UI", 12),
+                bg=frame.inner["bg"],
+                fg=THEME["subtext"],
                 justify="left"
-            ).pack(anchor="w")
+            ).pack(anchor="w", pady=30)
 
             return frame
 
-        self.switch_page(build, "Settings", self.btn_sett)
+        self.switch_page(build)
 
     AIDoctorApp.show_settings = settings_page
 
