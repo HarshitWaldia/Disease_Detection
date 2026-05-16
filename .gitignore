@@ -1,0 +1,8 @@
+disease/
+.disease/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+Testing.csv
+Training.csv
