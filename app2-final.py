@@ -907,7 +907,7 @@ from sklearn.metrics import accuracy_score
 # -------------------- LOAD ML DATA --------------------
 
 # Update paths to your Training.csv file:
-TRAIN_CSV_PATH = r"C:\Users\harsh\Downloads\Disease_Detection-main\Training.csv"
+TRAIN_CSV_PATH = r"Training.csv"
 
 df = pd.read_csv(TRAIN_CSV_PATH)
 
@@ -947,7 +947,7 @@ y = df["prognosis"]
 # from sklearn.metrics import accuracy_score
 
 # # Load training data
-# TRAIN_CSV_PATH = r"C:\Users\harsh\Downloads\Disease_Detection-main\Training.csv"
+# TRAIN_CSV_PATH = r"Training.csv"
 # df = pd.read_csv(TRAIN_CSV_PATH)
 # df.replace({'prognosis': mapping}, inplace=True)
 
