@@ -39,7 +39,7 @@ This project is a simple disease detection system built using Python and the Tki
 Install dependencies using `pip`:
 
 ```bash
-pip install pandas numpy scikit-learn
+pip install -r requirements.txt
 ```
 
 ## How to Run
