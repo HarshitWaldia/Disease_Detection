@@ -48,8 +48,8 @@ pip install -r requirements.txt
 2. Make sure you have the necessary dependencies installed.
 3. Run the script using Python:
 
-```bash
-python disease_detection.py
+```bashs
+python app2-final.py
 ```
 
 4. Enter the symptoms in the GUI, and the disease prediction will be displayed.
