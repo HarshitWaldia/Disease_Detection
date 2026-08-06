@@ -75,6 +75,14 @@ The dataset used for training the model includes various symptoms and their corr
 * Create a web-based interface for easier access.
 * Integrate with healthcare APIs for real-time disease updates.
 
+## Updates 
+
+* Updated GUI.
+
+## Current progress 
+
+* Working on NLP based ai agent based on small knowledge base.
+
 ## Author
 
 * **Harshit Waldia** - Developer
